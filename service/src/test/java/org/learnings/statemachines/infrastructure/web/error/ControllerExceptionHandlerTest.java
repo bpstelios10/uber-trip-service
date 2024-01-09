@@ -1,4 +1,4 @@
-package org.learnings.statemachines.web.error;
+package org.learnings.statemachines.infrastructure.web.error;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

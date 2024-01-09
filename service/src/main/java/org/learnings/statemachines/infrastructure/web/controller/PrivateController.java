@@ -1,4 +1,4 @@
-package org.learnings.statemachines.web.controller;
+package org.learnings.statemachines.infrastructure.web.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

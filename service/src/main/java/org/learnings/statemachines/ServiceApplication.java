@@ -3,14 +3,24 @@ package org.learnings.statemachines;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.statemachine.config.EnableStateMachine;
+import org.springframework.context.ApplicationContext;
+
+import java.util.Arrays;
 
 @SpringBootApplication
 @EnableConfigurationProperties
-@EnableStateMachine
 public class ServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ServiceApplication.class, args);
+        ApplicationContext context = SpringApplication.run(ServiceApplication.class, args);
+        debug(context);
+    }
+
+    private static void debug(ApplicationContext ctx) {
+        String[] beanNames = ctx.getBeanDefinitionNames();
+        Arrays.sort(beanNames);
+        for (String beanName : beanNames) {
+            System.out.println("-------> " + beanName);
+        }
     }
 }
