@@ -1,6 +1,7 @@
 package org.learnings.statemachines.infrastructure.web.error;
 
 import lombok.extern.slf4j.Slf4j;
+import org.learnings.statemachines.application.error.InvalidStateTransition;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -16,6 +17,16 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
         log.error("Unexpected Exception: {}", ex.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .build();
+    }
+
+    @ExceptionHandler({InvalidStateTransition.class})
+    public ResponseEntity<Void> handleInvalidStateTransition(InvalidStateTransition ex) {
+        if (!log.isDebugEnabled()) log.error("Exception thrown: {}", ex.getMessage());
+        else log.error("Exception thrown: {}", ex.getMessage(), ex);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .build();
     }
 }

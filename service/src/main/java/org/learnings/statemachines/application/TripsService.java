@@ -1,45 +1,91 @@
 package org.learnings.statemachines.application;
 
 import lombok.extern.slf4j.Slf4j;
-import org.learnings.statemachines.domain.Booking;
-import org.learnings.statemachines.domain.Trip;
+import org.learnings.statemachines.application.dto.TripDTO;
+import org.learnings.statemachines.application.error.InvalidStateTransition;
 import org.learnings.statemachines.domain.TripEvents;
 import org.learnings.statemachines.domain.TripStates;
+import org.learnings.statemachines.repositories.*;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
+import org.springframework.statemachine.config.StateMachineFactory;
+import org.springframework.statemachine.support.DefaultStateMachineContext;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
 @Slf4j
 public class TripsService {
 
-    private final StateMachine<TripStates, TripEvents> stateMachine;
+    private final TripCurrentStateRepository tripCurrentStateRepository;
+    private final TripRepository tripRepository;
+    private final StateMachineFactory<TripStates, TripEvents> stateMachineFactory;
 
-    public TripsService(StateMachine<TripStates, TripEvents> stateMachine) {
-        this.stateMachine = stateMachine;
+    public TripsService(TripCurrentStateRepository tripCurrentStateRepository,
+                        TripRepository tripRepository,
+                        StateMachineFactory<TripStates, TripEvents> stateMachineFactory) {
+        this.tripCurrentStateRepository = tripCurrentStateRepository;
+        this.tripRepository = tripRepository;
+        this.stateMachineFactory = stateMachineFactory;
     }
 
-    public Trip getTrip(String id) {
-        Booking dummyBooking = new Booking("driver-id", 12.3f);
-        Trip dummyTrip = new Trip(UUID.fromString("f9734631-6833-4885-93c5-dd41679fc908"),
-                "customer-id",
-                "location",
-                "destination",
-                dummyBooking);
-        log.debug("retrieved trip with info [{}]", dummyTrip);
+    public Optional<TripDTO> getTrip(String id) {
+        Optional<TripEntity> tripEntity = tripRepository.findById(UUID.fromString(id));
+        log.debug("retrieved trip with info [{}]", tripEntity);
 
-        return dummyTrip;
+        return Optional.ofNullable(TripDTO.fromEntity(tripEntity.orElse(null)));
     }
 
     public void createTrip(UUID id, String customerId, String location, String destination) {
-        Trip trip = new Trip(id,
+        TripEntity trip = new TripEntity(id,
                 customerId,
                 location,
                 destination,
-                new Booking());
+                new BookingEntity());
+
+        tripRepository.save(trip);
+
+        TripCurrentStateEntity tripCurrentState = new TripCurrentStateEntity(id, TripStates.TRIP_CREATED);
+        tripCurrentStateRepository.save(tripCurrentState);
+
+        log.debug("created trip [{}]", trip);
+    }
+
+    public void updateTripState(UUID id, TripEvents event) {
+        TripCurrentStateEntity tripCurrentState = tripCurrentStateRepository.findById(id).orElseThrow();
+        TripStates previousState = tripCurrentState.getState();
+
+        StateMachine<TripStates, TripEvents> stateMachine = createTripMachineWithState(id, previousState);
+        log.info("uuid: [{}]", tripCurrentState.getTripId());
+        log.info("stored state: [{}]", previousState);
+        log.info("state machine state: [{}]", stateMachine.getState().getId());
+
+        Message<TripEvents> eventMessage = MessageBuilder.withPayload(event).build();
+        stateMachine.sendEvent(eventMessage);
+
+        TripStates newState = stateMachine.getState().getId();
+        if (!TripStates.isStateTransitionValid(previousState, newState))
+            throw new InvalidStateTransition("Action [" + event + "] not allowed. Previous trip state was [" + previousState
+                    + "] and current is [" + newState + "]");
+        tripCurrentState = new TripCurrentStateEntity(id, newState);
+        tripCurrentStateRepository.save(tripCurrentState);
+
+        log.info("new state machine state: [{}]", newState);
+    }
+
+    private StateMachine<TripStates, TripEvents> createTripMachineWithState(UUID id, TripStates state) {
+        StateMachine<TripStates, TripEvents> stateMachine = stateMachineFactory.getStateMachine(id);
+        stateMachine.stop();
+        stateMachine.getStateMachineAccessor()
+                .doWithAllRegions(sma ->
+                        sma.resetStateMachine(
+                                new DefaultStateMachineContext<>(state, null, null, null)));
 
         stateMachine.start();
-        log.debug("created trip [{}]", trip);
+
+        return stateMachine;
     }
 }
