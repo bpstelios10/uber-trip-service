@@ -14,6 +14,8 @@ public class BookingEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private long id;
+    @Setter
     private String driverId;
+    @Setter
     private float price;
 }

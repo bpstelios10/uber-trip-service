@@ -3,6 +3,7 @@ package org.learnings.statemachines.infrastructure.web.controller;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.learnings.statemachines.application.TripsService;
+import org.learnings.statemachines.application.dto.BookingDTO;
 import org.learnings.statemachines.application.dto.TripDTO;
 import org.learnings.statemachines.domain.TripEvents;
 import org.mockito.InjectMocks;
@@ -101,9 +102,9 @@ class TripsControllerTest {
     }
 
     @Test
-    void sendEvent_succeeds() {
-        TripsController.SendEventRequestBody requestBody = new TripsController.SendEventRequestBody("driver-id");
-        doNothing().when(service).updateTripState(expectedTrip.id(), TripEvents.DRIVER_REQUESTS_TRIP);
+    void sendEvent_succeeds_withRequestBody() {
+        TripsController.SendEventRequestBody requestBody = new TripsController.SendEventRequestBody("driver-id", 0f);
+        doNothing().when(service).updateTripState(expectedTrip.id(), TripEvents.DRIVER_REQUESTS_TRIP, new BookingDTO("driver-id", 0f));
 
         ResponseEntity<Void> response =
                 controller.sendEvent("f9734631-6833-4885-93c5-dd41679fc908", "DRIVER_REQUESTS_TRIP", requestBody);
@@ -112,19 +113,28 @@ class TripsControllerTest {
     }
 
     @Test
-    void sendEvent_fails_whenStateTransitionNotAllowed() {
-        TripsController.SendEventRequestBody requestBody = new TripsController.SendEventRequestBody("driver-id");
-        doThrow(NoSuchElementException.class).when(service).updateTripState(expectedTrip.id(), TripEvents.DRIVER_REQUESTS_TRIP);
+    void sendEvent_succeeds_withoutRequestBody() {
+        doNothing().when(service).updateTripState(expectedTrip.id(), TripEvents.DRIVER_REQUESTS_TRIP, null);
 
         ResponseEntity<Void> response =
-                controller.sendEvent("f9734631-6833-4885-93c5-dd41679fc908", "DRIVER_REQUESTS_TRIP", requestBody);
+                controller.sendEvent("f9734631-6833-4885-93c5-dd41679fc908", "DRIVER_REQUESTS_TRIP", null);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void sendEvent_fails_whenStateTransitionNotAllowed() {
+        doThrow(NoSuchElementException.class).when(service).updateTripState(expectedTrip.id(), TripEvents.DRIVER_REQUESTS_TRIP, null);
+
+        ResponseEntity<Void> response =
+                controller.sendEvent("f9734631-6833-4885-93c5-dd41679fc908", "DRIVER_REQUESTS_TRIP", null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
     void sendEvent_fails_whenEventDoesNotExist() {
-        TripsController.SendEventRequestBody requestBody = new TripsController.SendEventRequestBody("driver-id");
+        TripsController.SendEventRequestBody requestBody = new TripsController.SendEventRequestBody("driver-id", 0f);
 
         ResponseEntity<Void> response =
                 controller.sendEvent("f9734631-6833-4885-93c5-dd41679fc908", "wrong-event-name", requestBody);

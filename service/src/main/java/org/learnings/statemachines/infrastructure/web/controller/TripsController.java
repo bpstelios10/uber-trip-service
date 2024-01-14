@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.learnings.statemachines.application.TripsService;
+import org.learnings.statemachines.application.dto.BookingDTO;
 import org.learnings.statemachines.application.dto.TripDTO;
 import org.learnings.statemachines.domain.TripEvents;
 import org.springframework.http.ResponseEntity;
@@ -51,9 +52,12 @@ public class TripsController { //TODO handle db exceptions
         Optional<TripEvents> newTripEvent = TripEvents.get(event);
         if (newTripEvent.isEmpty()) return ResponseEntity.badRequest().build();
         // TODO check id is uuid
+        BookingDTO booking = null;
+        if (requestBody != null)
+            booking = new BookingDTO(requestBody.driverId, requestBody.price);
 
         try {
-            service.updateTripState(UUID.fromString(id), newTripEvent.get());
+            service.updateTripState(UUID.fromString(id), newTripEvent.get(), booking);
         } catch (NoSuchElementException ex) {
             return ResponseEntity.badRequest().build(); //TODO improve response
         }
@@ -65,6 +69,6 @@ public class TripsController { //TODO handle db exceptions
                                  @NotBlank String destination) {
     }
 
-    record SendEventRequestBody(String driverId) {
+    record SendEventRequestBody(String driverId, float price) {
     }
 }

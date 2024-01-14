@@ -1,5 +1,7 @@
 package org.learnings.statemachines.application.config;
 
+import org.learnings.statemachines.application.statemachine.PersistDriverIdToTripAction;
+import org.learnings.statemachines.application.statemachine.ValidateDriverIdGuard;
 import org.learnings.statemachines.domain.TripEvents;
 import org.learnings.statemachines.domain.TripStates;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +19,15 @@ import static org.learnings.statemachines.domain.TripStates.*;
 @EnableStateMachineFactory
 public class SimpleStateMachineConfiguration extends StateMachineConfigurerAdapter<TripStates, TripEvents> {
 
+    private final ValidateDriverIdGuard validateDriverIdGuard;
+    private final PersistDriverIdToTripAction persistDriverIdToTripAction;
+
+    public SimpleStateMachineConfiguration(ValidateDriverIdGuard validateDriverIdGuard,
+                                           PersistDriverIdToTripAction persistDriverIdToTripAction) {
+        this.validateDriverIdGuard = validateDriverIdGuard;
+        this.persistDriverIdToTripAction = persistDriverIdToTripAction;
+    }
+
     @Override
     public void configure(StateMachineStateConfigurer<TripStates, TripEvents> states) throws Exception {
         states
@@ -29,12 +40,13 @@ public class SimpleStateMachineConfiguration extends StateMachineConfigurerAdapt
     @Override
     public void configure(StateMachineTransitionConfigurer<TripStates, TripEvents> transitions) throws Exception {
         transitions.withExternal()
-                .source(TRIP_CREATED).target(DRIVER_ASSIGNED).event(DRIVER_REQUESTS_TRIP).and()
-                .withExternal()
-                .source(DRIVER_ASSIGNED).target(DRIVER_AT_PICKUP_POINT).event(DRIVER_ARRIVES_AT_PICKUP).and()
-                .withExternal()
-                .source(DRIVER_AT_PICKUP_POINT).target(TRIP_STARTED).event(TRIP_STARTS).and()
-                .withExternal()
+                .source(TRIP_CREATED).target(DRIVER_ASSIGNED).event(DRIVER_REQUESTS_TRIP)
+                .guard(validateDriverIdGuard).action(persistDriverIdToTripAction)
+                .and().withExternal()
+                .source(DRIVER_ASSIGNED).target(DRIVER_AT_PICKUP_POINT).event(DRIVER_ARRIVES_AT_PICKUP)
+                .and().withExternal()
+                .source(DRIVER_AT_PICKUP_POINT).target(TRIP_STARTED).event(TRIP_STARTS)
+                .and().withExternal()
                 .source(TRIP_STARTED).target(TRIP_ENDED).event(ARRIVES_AT_DESTINATION);
     }
 }

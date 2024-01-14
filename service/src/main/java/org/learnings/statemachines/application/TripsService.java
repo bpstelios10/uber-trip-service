@@ -1,6 +1,7 @@
 package org.learnings.statemachines.application;
 
 import lombok.extern.slf4j.Slf4j;
+import org.learnings.statemachines.application.dto.BookingDTO;
 import org.learnings.statemachines.application.dto.TripDTO;
 import org.learnings.statemachines.application.error.InvalidStateTransition;
 import org.learnings.statemachines.domain.TripEvents;
@@ -15,6 +16,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.learnings.statemachines.domain.TripEvents.ARRIVES_AT_DESTINATION;
+import static org.learnings.statemachines.domain.TripEvents.DRIVER_REQUESTS_TRIP;
 
 @Component
 @Slf4j
@@ -54,22 +58,22 @@ public class TripsService {
         log.debug("created trip [{}]", trip);
     }
 
-    public void updateTripState(UUID id, TripEvents event) {
+    public void updateTripState(UUID id, TripEvents event, BookingDTO bookingDTO) {
         TripCurrentStateEntity tripCurrentState = tripCurrentStateRepository.findById(id).orElseThrow();
         TripStates previousState = tripCurrentState.getState();
 
         StateMachine<TripStates, TripEvents> stateMachine = createTripMachineWithState(id, previousState);
-        log.info("uuid: [{}]", tripCurrentState.getTripId());
-        log.info("stored state: [{}]", previousState);
-        log.info("state machine state: [{}]", stateMachine.getState().getId());
 
-        Message<TripEvents> eventMessage = MessageBuilder.withPayload(event).build();
-        stateMachine.sendEvent(eventMessage);
-
+        Message<TripEvents> eventMessage =
+                event == DRIVER_REQUESTS_TRIP || event == ARRIVES_AT_DESTINATION ?
+                        MessageBuilder.withPayload(event).setHeader("booking", bookingDTO).setHeader("trip-id", id).build() :
+                        MessageBuilder.withPayload(event).build();
+        boolean isNewEventAccepted = stateMachine.sendEvent(eventMessage);
         TripStates newState = stateMachine.getState().getId();
-        if (!TripStates.isStateTransitionValid(previousState, newState))
+        if (!isNewEventAccepted)
             throw new InvalidStateTransition("Action [" + event + "] not allowed. Previous trip state was [" + previousState
                     + "] and current is [" + newState + "]");
+
         tripCurrentState = new TripCurrentStateEntity(id, newState);
         tripCurrentStateRepository.save(tripCurrentState);
 
@@ -77,6 +81,9 @@ public class TripsService {
     }
 
     private StateMachine<TripStates, TripEvents> createTripMachineWithState(UUID id, TripStates state) {
+        log.debug("state machine with uuid: [{}]", id);
+        log.debug("stored state: [{}]", state);
+
         StateMachine<TripStates, TripEvents> stateMachine = stateMachineFactory.getStateMachine(id);
         stateMachine.stop();
         stateMachine.getStateMachineAccessor()
@@ -85,6 +92,7 @@ public class TripsService {
                                 new DefaultStateMachineContext<>(state, null, null, null)));
 
         stateMachine.start();
+        log.debug("state machine state: [{}]", stateMachine.getState().getId());
 
         return stateMachine;
     }
