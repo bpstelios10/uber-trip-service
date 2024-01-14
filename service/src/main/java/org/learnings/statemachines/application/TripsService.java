@@ -1,6 +1,7 @@
 package org.learnings.statemachines.application;
 
 import lombok.extern.slf4j.Slf4j;
+import org.learnings.statemachines.application.config.SimpleStateMachineListener;
 import org.learnings.statemachines.application.dto.BookingDTO;
 import org.learnings.statemachines.application.dto.TripDTO;
 import org.learnings.statemachines.application.error.InvalidStateTransition;
@@ -73,13 +74,9 @@ public class TripsService {
         if (!isNewEventAccepted)
             throw new InvalidStateTransition("Action [" + event + "] not allowed. Previous trip state was [" + previousState
                     + "] and current is [" + newState + "]");
-
-        tripCurrentState = new TripCurrentStateEntity(id, newState);
-        tripCurrentStateRepository.save(tripCurrentState);
-
-        log.info("new state machine state: [{}]", newState);
     }
 
+    ///TODO move this out so i can test updateTripState
     private StateMachine<TripStates, TripEvents> createTripMachineWithState(UUID id, TripStates state) {
         log.debug("state machine with uuid: [{}]", id);
         log.debug("stored state: [{}]", state);
@@ -92,6 +89,7 @@ public class TripsService {
                                 new DefaultStateMachineContext<>(state, null, null, null)));
 
         stateMachine.start();
+        stateMachine.addStateListener(new SimpleStateMachineListener(tripCurrentStateRepository, id));
         log.debug("state machine state: [{}]", stateMachine.getState().getId());
 
         return stateMachine;

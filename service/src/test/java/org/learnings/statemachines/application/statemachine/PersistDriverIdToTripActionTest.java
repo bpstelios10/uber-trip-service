@@ -17,8 +17,8 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,7 +43,7 @@ class PersistDriverIdToTripActionTest {
         tripEntity.getBooking().setDriverId("test-driver-id");
         when(repository.save(tripEntity)).thenReturn(tripEntity);
 
-        assertThatNoException().isThrownBy(() -> action.execute(context));
+        assertDoesNotThrow(() -> action.execute(context));
     }
 
     @Test
