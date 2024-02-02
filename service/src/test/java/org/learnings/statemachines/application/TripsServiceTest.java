@@ -3,6 +3,8 @@ package org.learnings.statemachines.application;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.learnings.statemachines.application.dto.TripDTO;
+import org.learnings.statemachines.application.statemachine.SimpleStateMachineInterceptor;
+import org.learnings.statemachines.application.statemachine.SimpleStateMachineListener;
 import org.learnings.statemachines.domain.TripEvents;
 import org.learnings.statemachines.domain.TripStates;
 import org.learnings.statemachines.repositories.*;
@@ -29,7 +31,10 @@ class TripsServiceTest {
     private TripRepository tripRepository;
     @Mock
     private StateMachineFactory<TripStates, TripEvents> stateMachineFactory;
-
+    @Mock
+    private SimpleStateMachineInterceptor simpleStateMachineInterceptor;
+    @Mock
+    private SimpleStateMachineListener simpleStateMachineListener;
     @InjectMocks
     private TripsService service;
 

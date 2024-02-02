@@ -18,6 +18,11 @@ public class ValidateDriverIdGuard implements Guard<TripStates, TripEvents> {
 
         if (booking == null || booking.driverId() == null || booking.driverId().isBlank()) {
             log.error("guard prevented transition");
+
+            Exception ex = new RuntimeException("Failed to update state for booking: [" + booking + "]");
+            context.getStateMachine().setStateMachineError(ex);
+            context.getStateMachine().getExtendedState().getVariables().put("ERROR", ex);
+
             return false;
         }
 
